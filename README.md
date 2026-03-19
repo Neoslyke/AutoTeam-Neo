@@ -2,7 +2,7 @@
 
 A TShock plugin to set team automatically upon joining.
 
-*This is a translated plugin
+*This is a translated plugin from [here](https://github.com/UnrealMultiple/TShockPlugin/tree/master/src/AutoTeam).
 
 ## How to Install
 1. Download the `.dll` file.
