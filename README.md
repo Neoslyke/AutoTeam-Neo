@@ -1,6 +1,6 @@
 # AutoTeam
 
-A TShock plugin that automatically set a player's team.
+A TShock plugin to set team automatically upon joining.
 
 *This is a translated plugin
 
