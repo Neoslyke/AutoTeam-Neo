@@ -11,8 +11,12 @@
   <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="TShock" Version="6.1.0" />
-  </ItemGroup>
+<ItemGroup>
+  <PackageReference Include="TShock" Version="6.1.0" />
+
+  <Reference Include="LazyAPI">
+    <HintPath>..\libs\LazyAPI.dll</HintPath>
+  </Reference>
+</ItemGroup>
 
 </Project>

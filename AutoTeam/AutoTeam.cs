@@ -11,7 +11,7 @@ namespace AutoTeam;
 public class AutoTeam : LazyPlugin
 {
     public override string Author => "Modified by Neoslyke (original by 十七 / 肝帝熙恩)";
-    public override Version Version => new Version(2, 4, 9);
+    public override Version Version => new Version(2, 4, 10);
     public override string Description => "Automatically assigns players to teams based on their group";
     public override string Name => System.Reflection.Assembly.GetExecutingAssembly().GetName().Name!;
     
