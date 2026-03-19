@@ -11,29 +11,29 @@ namespace AutoTeam;
 public class AutoTeam : LazyPlugin
 {
     public override string Author => "Modified by Neoslyke (original by 十七 / 肝帝熙恩)";
-    public override Version Version => new Version(2, 4, 10);
+    public override Version Version => new Version(2, 4, 11);
     public override string Description => "Automatically assigns players to teams based on their group";
     public override string Name => System.Reflection.Assembly.GetExecutingAssembly().GetName().Name!;
-    
+
     public AutoTeam(Main game) : base(game) { }
 
     public override void Initialize()
     {
-        ServerApi.Hooks.NetGreetPlayer.Register(this, this.OnJoin);
-        PlayerHooks.PlayerPostLogin += this.OnLogin;
-        GetDataHandlers.PlayerTeam += this.Team;
+        ServerApi.Hooks.NetGreetPlayer.Register(this, OnJoin);
+        PlayerHooks.PlayerPostLogin += OnLogin;
+        GetDataHandlers.PlayerTeam += Team;
 
-        Commands.ChatCommands.Add(new Command("autoteam.toggle", this.TogglePlugin, "autoteam", "at"));
+        Commands.ChatCommands.Add(new Command("autoteam.toggle", TogglePlugin, "autoteam", "at"));
     }
 
     protected override void Dispose(bool disposing)
     {
         if (disposing)
         {
-            ServerApi.Hooks.NetGreetPlayer.Deregister(this, this.OnJoin);
-            PlayerHooks.PlayerPostLogin -= this.OnLogin;
-            GetDataHandlers.PlayerTeam -= this.Team;
-            Commands.ChatCommands.RemoveAll(x => x.CommandDelegate == this.TogglePlugin);
+            ServerApi.Hooks.NetGreetPlayer.Deregister(this, OnJoin);
+            PlayerHooks.PlayerPostLogin -= OnLogin;
+            GetDataHandlers.PlayerTeam -= Team;
+            Commands.ChatCommands.RemoveAll(x => x.CommandDelegate == TogglePlugin);
         }
         base.Dispose(disposing);
     }
@@ -50,37 +50,36 @@ public class AutoTeam : LazyPlugin
 
     private void Team(object? sender, PlayerTeamEventArgs args)
     {
-        if (args.Player == null)
+        if (args.Player == null || ShouldSkipAutoTeam(args.Player))
             return;
 
-        if (this.ShouldSkipAutoTeam(args.Player))
-            return;
-
-        this.SetTeam(args.Player);
+        SetTeam(args.Player);
         args.Handled = true;
     }
 
     private void OnJoin(GreetPlayerEventArgs args)
     {
-        var player = TShock.Players[args.Who];
-        if (player == null)
-            return;
-
-        if (this.ShouldSkipAutoTeam(player))
-            return;
-
-        this.SetTeam(player);
+        HandlePlayer(TShock.Players[args.Who]);
     }
 
     private void OnLogin(PlayerPostLoginEventArgs args)
     {
-        if (args.Player == null)
+        HandlePlayer(args.Player);
+    }
+
+    private void HandlePlayer(TSPlayer? player)
+    {
+        if (player == null || ShouldSkipAutoTeam(player))
             return;
 
-        if (this.ShouldSkipAutoTeam(args.Player))
-            return;
+        SetTeam(player);
 
-        this.SetTeam(args.Player);
+        // ✅ AutoAcceptRequest logic
+        if (Configuration.Instance.AutoAcceptRequest)
+        {
+            player.AcceptingWhispers = true; // ✅ equivalent to /autoaccept
+            player.SendInfoMessage("Auto-accept requests enabled.");
+        }
     }
 
     private bool ShouldSkipAutoTeam(TSPlayer player)
@@ -92,7 +91,7 @@ public class AutoTeam : LazyPlugin
             return true;
 
         var groupName = player.Group.Name;
-        return Configuration.Instance.GetTeamForGroup(groupName) == "none-configured";
+        return Configuration.Instance.GetTeamForGroup(groupName) == "none";
     }
 
     private void SetTeam(TSPlayer player)
@@ -100,7 +99,7 @@ public class AutoTeam : LazyPlugin
         var groupName = player.Group.Name;
         var teamName = Configuration.Instance.GetTeamForGroup(groupName);
 
-        var teamIndex = this.GetTeamIndex(teamName);
+        var teamIndex = GetTeamIndex(teamName);
 
         if (teamIndex != -1)
         {

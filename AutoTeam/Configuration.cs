@@ -8,7 +8,7 @@ public class Configuration : JsonConfigBase<Configuration>
 {
     protected override string Filename => "AutoTeam";
 
-    public bool Enable { get; set; } = true;
+    public bool Enabled { get; set; } = true;
 
     public bool AutoAcceptRequest { get; set; } = true;
 
