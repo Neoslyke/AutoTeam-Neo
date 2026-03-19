@@ -11,17 +11,18 @@ public class Configuration : JsonConfigBase<Configuration>
     [LocalizedPropertyName(CultureType.English, "Enable")]
     public bool Enabled { get; set; } = true;
 
+    // ✅ rename property itself
     [LocalizedPropertyName(CultureType.English, "GroupTemp")]
-    public Dictionary<string, string> GroupTeamMap { get; set; } = new();
+    public Dictionary<string, string> GroupTemp { get; set; } = new();
 
     public string GetTeamForGroup(string groupName)
     {
-        return this.GroupTeamMap.TryGetValue(groupName, out var team) ? team : GetString("none");
+        return this.GroupTemp.TryGetValue(groupName, out var team) ? team : "none";
     }
 
     protected override void SetDefault()
     {
-        this.GroupTeamMap = new Dictionary<string, string>
+        this.GroupTemp = new Dictionary<string, string>
         {
             {"guest", "pink"},
             {"default", "blue"},

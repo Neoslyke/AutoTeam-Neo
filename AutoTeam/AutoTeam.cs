@@ -2,8 +2,7 @@ using LazyAPI;
 using Terraria;
 using TerrariaApi.Server;
 using TShockAPI;
-using TShockAPI.Hooks;
-using static TShockAPI.GetDataHandlers;
+using System.Threading.Tasks;
 
 namespace AutoTeam;
 
@@ -11,8 +10,8 @@ namespace AutoTeam;
 public class AutoTeam : LazyPlugin
 {
     public override string Author => "Modified by Neoslyke (original by 十七 / 肝帝熙恩)";
-    public override Version Version => new Version(2, 4, 10);
-    public override string Description => GetString("Automatically assigns players to teams based on their group");
+    public override Version Version => new Version(2, 4, 13);
+    public override string Description => "Automatically assigns players to teams based on their group";
     public override string Name => System.Reflection.Assembly.GetExecutingAssembly().GetName().Name!;
 
     public AutoTeam(Main game) : base(game) { }
@@ -20,8 +19,6 @@ public class AutoTeam : LazyPlugin
     public override void Initialize()
     {
         ServerApi.Hooks.NetGreetPlayer.Register(this, OnJoin);
-        PlayerHooks.PlayerPostLogin += OnLogin;
-        GetDataHandlers.PlayerTeam += Team;
 
         Commands.ChatCommands.Add(new Command("autoteam.toggle", TogglePlugin, "autoteam", "at"));
     }
@@ -31,8 +28,6 @@ public class AutoTeam : LazyPlugin
         if (disposing)
         {
             ServerApi.Hooks.NetGreetPlayer.Deregister(this, OnJoin);
-            PlayerHooks.PlayerPostLogin -= OnLogin;
-            GetDataHandlers.PlayerTeam -= Team;
             Commands.ChatCommands.RemoveAll(x => x.CommandDelegate == TogglePlugin);
         }
         base.Dispose(disposing);
@@ -42,37 +37,28 @@ public class AutoTeam : LazyPlugin
     {
         Configuration.Instance.Enabled = !Configuration.Instance.Enabled;
 
-        var status = Configuration.Instance.Enabled ? GetString("enabled") : GetString("disabled");
-        args.Player.SendSuccessMessage(GetString("AutoTeam plugin is now ") + status);
+        var status = Configuration.Instance.Enabled ? "enabled" : "disabled";
+        args.Player.SendSuccessMessage($"AutoTeam plugin is now {status}");
 
         Configuration.Save();
     }
 
-    private void Team(object? sender, PlayerTeamEventArgs args)
-    {
-        if (args.Player == null || ShouldSkipAutoTeam(args.Player))
-            return;
-
-        SetTeam(args.Player);
-        args.Handled = true;
-    }
-
     private void OnJoin(GreetPlayerEventArgs args)
     {
-        HandlePlayer(TShock.Players[args.Who]);
-    }
+        var player = TShock.Players[args.Who];
 
-    private void OnLogin(PlayerPostLoginEventArgs args)
-    {
-        HandlePlayer(args.Player);
-    }
-
-    private void HandlePlayer(TSPlayer? player)
-    {
-        if (player == null || ShouldSkipAutoTeam(player))
+        if (player == null)
             return;
 
-        SetTeam(player);
+        Task.Run(async () =>
+        {
+            await Task.Delay(800);
+
+            if (player == null || ShouldSkipAutoTeam(player))
+                return;
+
+            SetTeam(player);
+        });
     }
 
     private bool ShouldSkipAutoTeam(TSPlayer player)
@@ -84,7 +70,7 @@ public class AutoTeam : LazyPlugin
             return true;
 
         var groupName = player.Group.Name;
-        return Configuration.Instance.GetTeamForGroup(groupName) == GetString("none");
+        return Configuration.Instance.GetTeamForGroup(groupName) == "none";
     }
 
     private void SetTeam(TSPlayer player)
@@ -96,12 +82,17 @@ public class AutoTeam : LazyPlugin
 
         if (teamIndex != -1)
         {
-            player.SetTeam(teamIndex);
-            player.SendInfoMessage(GetString($"Your team has been set to {teamName}."));
+
+            if (player.Team != teamIndex)
+            {
+                player.SetTeam(teamIndex);
+            }
+
+            player.SendInfoMessage($"Your team has been set to {teamName}.");
         }
         else
         {
-            player.SendInfoMessage(GetString($"Invalid team configuration: {teamName}"));
+            player.SendInfoMessage($"Invalid team configuration: {teamName}");
         }
     }
 
@@ -109,12 +100,12 @@ public class AutoTeam : LazyPlugin
     {
         return teamName.ToLower() switch
         {
-            "none" => 0,
-            "red" => 1,
-            "green" => 2,
-            "blue" => 3,
-            "yellow" => 4,
-            "pink" => 5,
+            "none" or "无队伍" => 0,
+            "red" or "红队" => 1,
+            "green" or "绿队" => 2,
+            "blue" or "蓝队" => 3,
+            "yellow" or "黄队" => 4,
+            "pink" or "粉队" => 5,
             _ => -1,
         };
     }
