@@ -8,18 +8,20 @@ public class Configuration : JsonConfigBase<Configuration>
 {
     protected override string Filename => "AutoTeam";
 
-    public bool Enabled { get; set; } = true;
+    public bool Enable { get; set; } = true;
 
-    public Dictionary<string, string> GroupTeamMap { get; set; } = new();
+    public bool AutoAcceptRequest { get; set; } = true;
+
+    public Dictionary<string, string> GroupTemp { get; set; } = new();
 
     public string GetTeamForGroup(string groupName)
     {
-        return this.GroupTeamMap.TryGetValue(groupName, out var team) ? team : "none";
+        return this.GroupTemp.TryGetValue(groupName, out var team) ? team : "none";
     }
 
     protected override void SetDefault()
     {
-        this.GroupTeamMap = new Dictionary<string, string>
+        this.GroupTemp = new Dictionary<string, string>
         {
             {"guest", "pink"},
             {"default", "blue"},
