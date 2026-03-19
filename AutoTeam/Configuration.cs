@@ -1,6 +1,5 @@
 using LazyAPI.Attributes;
 using LazyAPI.ConfigFiles;
-using Newtonsoft.Json;
 
 namespace AutoTeam;
 
@@ -9,23 +8,20 @@ public class Configuration : JsonConfigBase<Configuration>
 {
     protected override string Filename => "AutoTeam";
 
-    [JsonProperty("Enabled")]
+    [LocalizedPropertyName(CultureType.English, "Enable")]
     public bool Enabled { get; set; } = true;
 
-    [JsonProperty("AutoAcceptRequest")]
-    public bool AutoAcceptRequest { get; set; } = true;
-
-    [JsonProperty("GroupTemp")]
-    public Dictionary<string, string> GroupTemp { get; set; } = new();
+    [LocalizedPropertyName(CultureType.English, "GroupTemp")]
+    public Dictionary<string, string> GroupTeamMap { get; set; } = new();
 
     public string GetTeamForGroup(string groupName)
     {
-        return this.GroupTemp.TryGetValue(groupName, out var team) ? team : "none";
+        return this.GroupTeamMap.TryGetValue(groupName, out var team) ? team : GetString("none");
     }
 
     protected override void SetDefault()
     {
-        this.GroupTemp = new Dictionary<string, string>
+        this.GroupTeamMap = new Dictionary<string, string>
         {
             {"guest", "pink"},
             {"default", "blue"},

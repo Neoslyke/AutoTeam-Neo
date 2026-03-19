@@ -11,8 +11,8 @@ namespace AutoTeam;
 public class AutoTeam : LazyPlugin
 {
     public override string Author => "Modified by Neoslyke (original by 十七 / 肝帝熙恩)";
-    public override Version Version => new Version(2, 4, 12);
-    public override string Description => "Automatically assigns players to teams based on their group";
+    public override Version Version => new Version(2, 4, 10);
+    public override string Description => GetString("Automatically assigns players to teams based on their group");
     public override string Name => System.Reflection.Assembly.GetExecutingAssembly().GetName().Name!;
 
     public AutoTeam(Main game) : base(game) { }
@@ -42,8 +42,8 @@ public class AutoTeam : LazyPlugin
     {
         Configuration.Instance.Enabled = !Configuration.Instance.Enabled;
 
-        var status = Configuration.Instance.Enabled ? "enabled" : "disabled";
-        args.Player.SendSuccessMessage($"AutoTeam plugin is now {status}");
+        var status = Configuration.Instance.Enabled ? GetString("enabled") : GetString("disabled");
+        args.Player.SendSuccessMessage(GetString("AutoTeam plugin is now ") + status);
 
         Configuration.Save();
     }
@@ -73,12 +73,6 @@ public class AutoTeam : LazyPlugin
             return;
 
         SetTeam(player);
-
-        // ✅ AutoAcceptRequest → run real command
-        if (Configuration.Instance.AutoAcceptRequest)
-        {
-            Commands.HandleCommand(player, "/autoaccept");
-        }
     }
 
     private bool ShouldSkipAutoTeam(TSPlayer player)
@@ -90,7 +84,7 @@ public class AutoTeam : LazyPlugin
             return true;
 
         var groupName = player.Group.Name;
-        return Configuration.Instance.GetTeamForGroup(groupName) == "none";
+        return Configuration.Instance.GetTeamForGroup(groupName) == GetString("none");
     }
 
     private void SetTeam(TSPlayer player)
@@ -103,11 +97,11 @@ public class AutoTeam : LazyPlugin
         if (teamIndex != -1)
         {
             player.SetTeam(teamIndex);
-            player.SendInfoMessage($"Your team has been set to {teamName}.");
+            player.SendInfoMessage(GetString($"Your team has been set to {teamName}."));
         }
         else
         {
-            player.SendInfoMessage($"Invalid team configuration: {teamName}");
+            player.SendInfoMessage(GetString($"Invalid team configuration: {teamName}"));
         }
     }
 
