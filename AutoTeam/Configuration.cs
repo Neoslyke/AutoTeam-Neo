@@ -8,17 +8,13 @@ public class Configuration : JsonConfigBase<Configuration>
 {
     protected override string Filename => "AutoTeam";
 
-    [LocalizedPropertyName(CultureType.Chinese, "开启插件")]
-    [LocalizedPropertyName(CultureType.English, "Enable")]
     public bool Enabled { get; set; } = true;
 
-    [LocalizedPropertyName(CultureType.Chinese, "组对应的队伍")]
-    [LocalizedPropertyName(CultureType.English, "Group Team Mapping")]
     public Dictionary<string, string> GroupTeamMap { get; set; } = new();
 
     public string GetTeamForGroup(string groupName)
     {
-        return this.GroupTeamMap.TryGetValue(groupName, out var team) ? team : "none-configured";
+        return this.GroupTeamMap.TryGetValue(groupName, out var team) ? team : "none";
     }
 
     protected override void SetDefault()
