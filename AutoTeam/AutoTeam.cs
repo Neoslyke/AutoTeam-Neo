@@ -19,8 +19,12 @@ public class AutoTeam : LazyPlugin
     public override void Initialize()
     {
         ServerApi.Hooks.NetGreetPlayer.Register(this, OnJoin);
-
-        Commands.ChatCommands.Add(new Command("autoteam.toggle", TogglePlugin, "autoteam", "at"));
+        
+        // Register hook for group changes
+        ServerApi.Hooks.ServerChat.Register(this, OnChat);
+        
+        // Optional: Add command to manually set team for a player
+        Commands.ChatCommands.Add(new Command("autoteam.set", SetTeamCommand, "setteam"));
     }
 
     protected override void Dispose(bool disposing)
@@ -28,19 +32,61 @@ public class AutoTeam : LazyPlugin
         if (disposing)
         {
             ServerApi.Hooks.NetGreetPlayer.Deregister(this, OnJoin);
-            Commands.ChatCommands.RemoveAll(x => x.CommandDelegate == TogglePlugin);
+            ServerApi.Hooks.ServerChat.Deregister(this, OnChat);
+            Commands.ChatCommands.RemoveAll(x => x.CommandDelegate == SetTeamCommand);
         }
         base.Dispose(disposing);
     }
 
-    private void TogglePlugin(CommandArgs args)
+    private void SetTeamCommand(CommandArgs args)
     {
-        Configuration.Instance.Enabled = !Configuration.Instance.Enabled;
+        if (args.Parameters.Count < 2)
+        {
+            args.Player.SendErrorMessage("Usage: /setteam <player> <team>");
+            args.Player.SendErrorMessage("Teams: none, red, green, blue, yellow, pink");
+            return;
+        }
 
-        var status = Configuration.Instance.Enabled ? "enabled" : "disabled";
-        args.Player.SendSuccessMessage($"AutoTeam plugin is now {status}");
+        var playerName = args.Parameters[0];
+        var teamName = args.Parameters[1].ToLower();
+        
+        var players = TSPlayer.FindByNameOrID(playerName);
+        if (players.Count == 0)
+        {
+            args.Player.SendErrorMessage($"Player '{playerName}' not found.");
+            return;
+        }
+        
+        if (players.Count > 1)
+        {
+            args.Player.SendMultipleMatchError(players.Select(p => p.Name));
+            return;
+        }
+        
+        var targetPlayer = players[0];
+        var teamIndex = GetTeamIndex(teamName);
+        
+        if (teamIndex == -1)
+        {
+            args.Player.SendErrorMessage($"Invalid team: {teamName}");
+            args.Player.SendErrorMessage("Valid teams: none, red, green, blue, yellow, pink");
+            return;
+        }
+        
+        targetPlayer.SetTeam(teamIndex);
+        args.Player.SendSuccessMessage($"Set {targetPlayer.Name}'s team to {teamName}.");
+        targetPlayer.SendInfoMessage($"Your team has been set to {teamName}.");
+    }
 
-        Configuration.Save();
+    private void OnChat(ServerChatEventArgs args)
+    {
+        // This hook can be used to detect group changes if needed
+        // For now, we'll just use it to handle team updates on group changes
+        if (args.Handled || args.Text.StartsWith("/"))
+            return;
+            
+        // You could add logic here to check if a player's group changed
+        // and update their team accordingly
     }
 
     private void OnJoin(GreetPlayerEventArgs args)
@@ -70,7 +116,9 @@ public class AutoTeam : LazyPlugin
             return true;
 
         var groupName = player.Group.Name;
-        return Configuration.Instance.GetTeamForGroup(groupName) == "none";
+        var teamName = Configuration.Instance.GetTeamForGroup(groupName);
+        
+        return teamName == "none" || string.IsNullOrEmpty(teamName);
     }
 
     private void SetTeam(TSPlayer player)
@@ -82,22 +130,23 @@ public class AutoTeam : LazyPlugin
 
         if (teamIndex != -1)
         {
-
             if (player.Team != teamIndex)
             {
                 player.SetTeam(teamIndex);
+                player.SendInfoMessage($"Your team has been set to {teamName}.");
             }
-
-            player.SendInfoMessage($"Your team has been set to {teamName}.");
         }
         else
         {
-            player.SendInfoMessage($"Invalid team configuration: {teamName}");
+            player.SendInfoMessage($"Invalid team configuration for group '{groupName}': {teamName}");
         }
     }
 
     private int GetTeamIndex(string teamName)
     {
+        if (string.IsNullOrEmpty(teamName))
+            return 0;
+            
         return teamName.ToLower() switch
         {
             "none" or "无队伍" => 0,

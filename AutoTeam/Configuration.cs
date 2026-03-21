@@ -9,25 +9,36 @@ public class Configuration : JsonConfigBase<Configuration>
     protected override string Filename => "AutoTeam";
 
     [LocalizedPropertyName(CultureType.English, "Enable")]
+    [LocalizedPropertyName(CultureType.Chinese, "启用")]
     public bool Enabled { get; set; } = true;
 
-    [LocalizedPropertyName(CultureType.English, "GroupTemp")]
-    public Dictionary<string, string> GroupTemp { get; set; } = new();
+    [LocalizedPropertyName(CultureType.English, "GroupTeams")]
+    [LocalizedPropertyName(CultureType.Chinese, "组队配置")]
+    public Dictionary<string, string> GroupTeams { get; set; } = new();
 
     public string GetTeamForGroup(string groupName)
     {
-        return this.GroupTemp.TryGetValue(groupName, out var team) ? team : "none";
+        if (this.GroupTeams.TryGetValue(groupName, out var team))
+            return team;
+            
+        // Try case-insensitive lookup
+        var key = this.GroupTeams.Keys.FirstOrDefault(k => 
+            k.Equals(groupName, StringComparison.OrdinalIgnoreCase));
+            
+        return key != null ? this.GroupTeams[key] : "none";
     }
 
     protected override void SetDefault()
     {
-        this.GroupTemp = new Dictionary<string, string>
+        this.GroupTeams = new Dictionary<string, string>
         {
             {"guest", "pink"},
             {"default", "blue"},
             {"owner", "red"},
             {"admin", "green"},
-            {"vip", "none"}
+            {"vip", "none"},
+            {"moderator", "yellow"},
+            {"helper", "blue"}
         };
     }
 }
