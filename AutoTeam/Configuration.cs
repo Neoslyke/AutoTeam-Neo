@@ -11,7 +11,6 @@ public class Configuration : JsonConfigBase<Configuration>
     [LocalizedPropertyName(CultureType.English, "Enable")]
     public bool Enabled { get; set; } = true;
 
-    // ✅ rename property itself
     [LocalizedPropertyName(CultureType.English, "GroupTemp")]
     public Dictionary<string, string> GroupTemp { get; set; } = new();
 
