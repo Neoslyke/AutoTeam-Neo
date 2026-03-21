@@ -125,20 +125,28 @@ public class AutoTeam : LazyPlugin
     {
         var groupName = player.Group.Name;
         var teamName = Configuration.Instance.GetTeamForGroup(groupName);
-
         var teamIndex = GetTeamIndex(teamName);
 
-        if (teamIndex != -1)
+        if (teamIndex == -1)
         {
-            if (player.Team != teamIndex)
-            {
-                player.SetTeam(teamIndex);
-                player.SendInfoMessage($"Your team has been set to {teamName}.");
-            }
+            player.SendErrorMessage($"[AutoTeam] Invalid team configuration for group '{groupName}': {teamName}");
+            return;
         }
-        else
+
+        if (player.Team != teamIndex)
         {
-            player.SendInfoMessage($"Invalid team configuration for group '{groupName}': {teamName}");
+            player.SetTeam(teamIndex);
+
+            if (teamIndex > 0)
+            {
+                var teamColor = Main.teamColor[teamIndex];
+                var displayName = char.ToUpper(teamName[0]) + teamName.Substring(1);
+                TSPlayer.All.SendMessage($"{player.Name} has joined the {displayName} team.", teamColor.R, teamColor.G, teamColor.B);
+            }
+            else
+            {
+                TSPlayer.All.SendMessage($"{player.Name} is no longer on a team.", 255, 255, 255);
+            }
         }
     }
 

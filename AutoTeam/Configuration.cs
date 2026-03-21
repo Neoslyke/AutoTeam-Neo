@@ -37,8 +37,6 @@ public class Configuration : JsonConfigBase<Configuration>
             {"owner", "red"},
             {"admin", "green"},
             {"vip", "none"},
-            {"moderator", "yellow"},
-            {"helper", "blue"}
         };
     }
 }
