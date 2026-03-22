@@ -19,11 +19,7 @@ public class AutoTeam : LazyPlugin
     public override void Initialize()
     {
         ServerApi.Hooks.NetGreetPlayer.Register(this, OnJoin);
-        
-        // Register hook for group changes
         ServerApi.Hooks.ServerChat.Register(this, OnChat);
-        
-        // Optional: Add command to manually set team for a player
         Commands.ChatCommands.Add(new Command("autoteam.set", SetTeamCommand, "setteam"));
     }
 
@@ -80,27 +76,21 @@ public class AutoTeam : LazyPlugin
 
     private void OnChat(ServerChatEventArgs args)
     {
-        // This hook can be used to detect group changes if needed
-        // For now, we'll just use it to handle team updates on group changes
         if (args.Handled || args.Text.StartsWith("/"))
             return;
-            
-        // You could add logic here to check if a player's group changed
-        // and update their team accordingly
     }
 
     private void OnJoin(GreetPlayerEventArgs args)
     {
-        var player = TShock.Players[args.Who];
-
-        if (player == null)
-            return;
+        var who = args.Who;
 
         Task.Run(async () =>
         {
             await Task.Delay(800);
 
-            if (player == null || ShouldSkipAutoTeam(player))
+            var player = TShock.Players[who];
+
+            if (player == null || !player.Active || ShouldSkipAutoTeam(player))
                 return;
 
             SetTeam(player);
@@ -109,7 +99,7 @@ public class AutoTeam : LazyPlugin
 
     private bool ShouldSkipAutoTeam(TSPlayer player)
     {
-        if (!Configuration.Instance.Enabled)
+        if (!Configuration.Instance.Enable)
             return true;
 
         if (player.Group == null || player.Group.HasPermission("noautoteam"))
@@ -118,7 +108,7 @@ public class AutoTeam : LazyPlugin
         var groupName = player.Group.Name;
         var teamName = Configuration.Instance.GetTeamForGroup(groupName);
         
-        return teamName == "none" || string.IsNullOrEmpty(teamName);
+        return string.IsNullOrEmpty(teamName);
     }
 
     private void SetTeam(TSPlayer player)
@@ -133,20 +123,17 @@ public class AutoTeam : LazyPlugin
             return;
         }
 
-        if (player.Team != teamIndex)
-        {
-            player.SetTeam(teamIndex);
+        player.SetTeam(teamIndex);
 
-            if (teamIndex > 0)
-            {
-                var teamColor = Main.teamColor[teamIndex];
-                var displayName = char.ToUpper(teamName[0]) + teamName.Substring(1);
-                TSPlayer.All.SendMessage($"{player.Name} has joined the {displayName} team.", teamColor.R, teamColor.G, teamColor.B);
-            }
-            else
-            {
-                TSPlayer.All.SendMessage($"{player.Name} is no longer on a team.", 255, 255, 255);
-            }
+        if (teamIndex > 0)
+        {
+            var teamColor = Main.teamColor[teamIndex];
+            var displayName = char.ToUpper(teamName[0]) + teamName.Substring(1);
+            TSPlayer.All.SendMessage($"{player.Name} has joined the {displayName} team.", teamColor.R, teamColor.G, teamColor.B);
+        }
+        else
+        {
+            TSPlayer.All.SendMessage($"{player.Name} is no longer on a team.", 255, 255, 255);
         }
     }
 
