@@ -1,26 +1,28 @@
-using LazyAPI;
 using Terraria;
 using TerrariaApi.Server;
 using TShockAPI;
-using System.Threading.Tasks;
+using TShockAPI.Hooks;
 
 namespace AutoTeam;
 
 [ApiVersion(2, 1)]
-public class AutoTeam : LazyPlugin
+public class AutoTeam : TerrariaPlugin
 {
     public override string Name => "AutoTeam";
-    public override string Author => "Neoslyke, 十七，肝帝熙恩";
+    public override string Author => "Neoslyke, 十七, 肝帝熙恩";
     public override Version Version => new Version(2, 1, 0);
-    public override string Description => "Automatically assigns players to teams based on their group";
-    
+    public override string Description => "Automatically assigns players to teams based on their group.";
+
+    public static Configuration Config { get; private set; } = new();
+
     public AutoTeam(Main game) : base(game) { }
 
     public override void Initialize()
     {
+        Config = Configuration.Load();
+
         ServerApi.Hooks.NetGreetPlayer.Register(this, OnJoin);
-        ServerApi.Hooks.ServerChat.Register(this, OnChat);
-        Commands.ChatCommands.Add(new Command("autoteam.set", SetTeamCommand, "setteam"));
+        GeneralHooks.ReloadEvent += OnReload;
     }
 
     protected override void Dispose(bool disposing)
@@ -28,128 +30,66 @@ public class AutoTeam : LazyPlugin
         if (disposing)
         {
             ServerApi.Hooks.NetGreetPlayer.Deregister(this, OnJoin);
-            ServerApi.Hooks.ServerChat.Deregister(this, OnChat);
-            Commands.ChatCommands.RemoveAll(x => x.CommandDelegate == SetTeamCommand);
+            GeneralHooks.ReloadEvent -= OnReload;
         }
         base.Dispose(disposing);
     }
 
-    private void SetTeamCommand(CommandArgs args)
+    private void OnReload(ReloadEventArgs args)
     {
-        if (args.Parameters.Count < 2)
-        {
-            args.Player.SendErrorMessage("Usage: /setteam <player> <team>");
-            args.Player.SendErrorMessage("Teams: none, red, green, blue, yellow, pink");
-            return;
-        }
-
-        var playerName = args.Parameters[0];
-        var teamName = args.Parameters[1].ToLower();
-        
-        var players = TSPlayer.FindByNameOrID(playerName);
-        if (players.Count == 0)
-        {
-            args.Player.SendErrorMessage($"Player '{playerName}' not found.");
-            return;
-        }
-        
-        if (players.Count > 1)
-        {
-            args.Player.SendMultipleMatchError(players.Select(p => p.Name));
-            return;
-        }
-        
-        var targetPlayer = players[0];
-        var teamIndex = GetTeamIndex(teamName);
-        
-        if (teamIndex == -1)
-        {
-            args.Player.SendErrorMessage($"Invalid team: {teamName}");
-            args.Player.SendErrorMessage("Valid teams: none, red, green, blue, yellow, pink");
-            return;
-        }
-        
-        targetPlayer.SetTeam(teamIndex);
-        args.Player.SendSuccessMessage($"Set {targetPlayer.Name}'s team to {teamName}.");
-        targetPlayer.SendInfoMessage($"Your team has been set to {teamName}.");
+        Config = Configuration.Load();
+        args.Player?.SendSuccessMessage("[AutoTeam] Configuration reloaded.");
     }
 
-    private void OnChat(ServerChatEventArgs args)
-    {
-        if (args.Handled || args.Text.StartsWith("/"))
-            return;
-    }
-
-    private void OnJoin(GreetPlayerEventArgs args)
+    private async void OnJoin(GreetPlayerEventArgs args)
     {
         var who = args.Who;
 
-        Task.Run(async () =>
-        {
-            await Task.Delay(800);
+        await Task.Delay(800);
 
-            var player = TShock.Players[who];
+        var player = TShock.Players[who];
 
-            if (player == null || !player.Active || ShouldSkipAutoTeam(player))
-                return;
-
-            SetTeam(player);
-        });
-    }
-
-    private bool ShouldSkipAutoTeam(TSPlayer player)
-    {
-        if (!Configuration.Instance.Enable)
-            return true;
-
-        if (player.Group == null || player.Group.HasPermission("noautoteam"))
-            return true;
-
-        var groupName = player.Group.Name;
-        var teamName = Configuration.Instance.GetTeamForGroup(groupName);
-        
-        return string.IsNullOrEmpty(teamName);
-    }
-
-    private void SetTeam(TSPlayer player)
-    {
-        var groupName = player.Group.Name;
-        var teamName = Configuration.Instance.GetTeamForGroup(groupName);
-        var teamIndex = GetTeamIndex(teamName);
-
-        if (teamIndex == -1)
-        {
-            player.SendErrorMessage($"[AutoTeam] Invalid team configuration for group '{groupName}': {teamName}");
+        if (player == null || !player.Active)
             return;
-        }
+
+        if (!Config.Enable)
+            return;
+
+        var groupName = player.Group?.Name;
+        if (string.IsNullOrEmpty(groupName))
+            return;
+
+        var teamName = Config.GetTeamForGroup(groupName);
+        if (string.IsNullOrEmpty(teamName) || teamName == "none")
+            return;
+
+        var teamIndex = GetTeamIndex(teamName);
+        if (teamIndex == -1)
+            return;
 
         player.SetTeam(teamIndex);
 
-        if (teamIndex > 0)
+        if (Config.AnnounceTeamJoin)
         {
             var teamColor = Main.teamColor[teamIndex];
             var displayName = char.ToUpper(teamName[0]) + teamName.Substring(1);
             TSPlayer.All.SendMessage($"{player.Name} has joined the {displayName} team.", teamColor.R, teamColor.G, teamColor.B);
         }
-        else
-        {
-            TSPlayer.All.SendMessage($"{player.Name} is no longer on a team.", 255, 255, 255);
-        }
     }
 
-    private int GetTeamIndex(string teamName)
+    private static int GetTeamIndex(string teamName)
     {
         if (string.IsNullOrEmpty(teamName))
             return 0;
-            
+
         return teamName.ToLower() switch
         {
-            "none" or "无队伍" => 0,
-            "red" or "红队" => 1,
-            "green" or "绿队" => 2,
-            "blue" or "蓝队" => 3,
-            "yellow" or "黄队" => 4,
-            "pink" or "粉队" => 5,
+            "none" => 0,
+            "red" => 1,
+            "green" => 2,
+            "blue" => 3,
+            "yellow" => 4,
+            "pink" => 5,
             _ => -1,
         };
     }

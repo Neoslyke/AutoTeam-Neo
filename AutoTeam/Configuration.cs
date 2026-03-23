@@ -1,35 +1,69 @@
-using LazyAPI.ConfigFiles;
+using Newtonsoft.Json;
+using TShockAPI;
 
 namespace AutoTeam;
 
-public class Configuration : JsonConfigBase<Configuration>
+public class Configuration
 {
-    protected override string Filename => "AutoTeam";
+    private static readonly string ConfigPath = Path.Combine(TShock.SavePath, "AutoTeam.json");
 
+    [JsonProperty("Enable")]
     public bool Enable { get; set; } = true;
 
-    public Dictionary<string, string> GroupTeams { get; set; } = new();
+    [JsonProperty("AnnounceTeamJoin")]
+    public bool AnnounceTeamJoin { get; set; } = true;
+
+    [JsonProperty("GroupTeams")]
+    public Dictionary<string, string> GroupTeams { get; set; } = new()
+    {
+        { "guest", "pink" },
+        { "default", "blue" },
+        { "owner", "red" },
+        { "admin", "green" },
+        { "vip", "none" }
+    };
 
     public string GetTeamForGroup(string groupName)
     {
-        if (this.GroupTeams.TryGetValue(groupName, out var team))
+        if (GroupTeams.TryGetValue(groupName, out var team))
             return team;
-            
-        var key = this.GroupTeams.Keys.FirstOrDefault(k => 
+
+        var key = GroupTeams.Keys.FirstOrDefault(k =>
             k.Equals(groupName, StringComparison.OrdinalIgnoreCase));
-            
-        return key != null ? this.GroupTeams[key] : "none";
+
+        return key != null ? GroupTeams[key] : "none";
     }
 
-    protected override void SetDefault()
+    public static Configuration Load()
     {
-        this.GroupTeams = new Dictionary<string, string>
+        try
         {
-            {"guest", "pink"},
-            {"default", "blue"},
-            {"owner", "red"},
-            {"admin", "green"},
-            {"vip", "none"},
-        };
+            if (!File.Exists(ConfigPath))
+            {
+                var config = new Configuration();
+                config.Save();
+                return config;
+            }
+
+            var json = File.ReadAllText(ConfigPath);
+            return JsonConvert.DeserializeObject<Configuration>(json) ?? new Configuration();
+        }
+        catch (Exception ex)
+        {
+            TShock.Log.ConsoleError($"[AutoTeam] Error loading config: {ex.Message}");
+            return new Configuration();
+        }
+    }
+
+    public void Save()
+    {
+        try
+        {
+            File.WriteAllText(ConfigPath, JsonConvert.SerializeObject(this, Formatting.Indented));
+        }
+        catch (Exception ex)
+        {
+            TShock.Log.ConsoleError($"[AutoTeam] Error saving config: {ex.Message}");
+        }
     }
 }
