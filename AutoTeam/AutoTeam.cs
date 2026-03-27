@@ -10,7 +10,7 @@ public class AutoTeam : TerrariaPlugin
 {
     public override string Name => "AutoTeam";
     public override string Author => "Neoslyke, 十七, 肝帝熙恩";
-    public override Version Version => new Version(2, 1, 0);
+    public override Version Version => new Version(2, 2, 0);
     public override string Description => "Automatically assigns players to teams based on their group.";
 
     public static Configuration Config { get; private set; } = new();
@@ -22,6 +22,7 @@ public class AutoTeam : TerrariaPlugin
         Config = Configuration.Load();
 
         ServerApi.Hooks.NetGreetPlayer.Register(this, OnJoin);
+        PlayerHooks.PlayerPostLogin += OnPostLogin;
         GeneralHooks.ReloadEvent += OnReload;
     }
 
@@ -30,6 +31,7 @@ public class AutoTeam : TerrariaPlugin
         if (disposing)
         {
             ServerApi.Hooks.NetGreetPlayer.Deregister(this, OnJoin);
+            PlayerHooks.PlayerPostLogin -= OnPostLogin;
             GeneralHooks.ReloadEvent -= OnReload;
         }
         base.Dispose(disposing);
@@ -52,6 +54,21 @@ public class AutoTeam : TerrariaPlugin
         if (player == null || !player.Active)
             return;
 
+        AssignTeam(player);
+    }
+
+    private void OnPostLogin(PlayerPostLoginEventArgs args)
+    {
+        var player = args.Player;
+
+        if (player == null || !player.Active)
+            return;
+
+        AssignTeam(player);
+    }
+
+    private void AssignTeam(TSPlayer player)
+    {
         if (!Config.Enable)
             return;
 
@@ -65,6 +82,10 @@ public class AutoTeam : TerrariaPlugin
 
         var teamIndex = GetTeamIndex(teamName);
         if (teamIndex == -1)
+            return;
+
+        // Don't reassign if already on the correct team
+        if (player.Team == teamIndex)
             return;
 
         player.SetTeam(teamIndex);
